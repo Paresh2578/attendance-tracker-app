@@ -141,4 +141,25 @@ class RollNumbers {
     "b3": b3,
     "c1": c1,
   };
+
+  static String getBatchByRollNumber(int number) {
+    String batch = "";
+    if (a5.contains(number)) {
+      batch = "a1";
+    } else if (a6.contains(number)) {
+      batch = "a2";
+    } else if (b1.contains(number)) {
+      batch = "b1";
+    } else if (b2.contains(number)) {
+      batch = "b2";
+    } else if (b3.contains(number)) {
+      batch = "b3";
+    } else if (c1.contains(number)) {
+      batch = "c1";
+    } else {
+      return "Unknown";
+    }
+
+    return batch.trim().toUpperCase();
+  }
 }

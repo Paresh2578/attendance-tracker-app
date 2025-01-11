@@ -3,7 +3,7 @@ import 'package:attends_trecker/Models/StudentModel.dart';
 import 'package:flutter/material.dart';
 
 class TakeAttendanceScreen extends StatefulWidget {
-  final List<int> rollNumbers;
+  List<int> rollNumbers;
   final String batchs;
   final DateTime date;
   List<Student>? absentList;
@@ -22,8 +22,8 @@ class TakeAttendanceScreen extends StatefulWidget {
 }
 
 class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
-  List<Student> presentList = [], tempPresentList = [];
-  List<Student> absentList = [], tempAbsentList = [];
+  List<Student> presentList = [];
+  List<Student> absentList = [];
   TextEditingController searchController = TextEditingController();
 
   @override
@@ -32,15 +32,18 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
 
     if (widget.presentList != null && widget.absentList != null) {
       presentList = widget.presentList!;
-      tempPresentList = presentList;
-
       absentList = widget.absentList!;
-      tempAbsentList = absentList;
+
+      // add the roll numbers List
+      widget.rollNumbers = absentList.map((e) => e.rollNumber).toList();
+      widget.rollNumbers.addAll(presentList.map((e) => e.rollNumber).toList());
     } else {
       absentList =
           widget.rollNumbers.map((roll) => Student(rollNumber: roll)).toList();
-      tempAbsentList = absentList;
     }
+
+    // sort
+    sortStudent();
 //
     setState(() {});
   }
@@ -50,10 +53,8 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
     searchController.dispose();
 
     // clear all data
-    presentList.clear();
-    tempPresentList.clear();
-    absentList.clear();
-    tempAbsentList.clear();
+    // presentList.clear();
+    // absentList.clear();
 
     super.dispose();
   }
@@ -63,8 +64,6 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final size = MediaQuery.of(context).size;
-
-    print("********* call &*************");
 
     return WillPopScope(
       onWillPop: () async {
@@ -77,7 +76,7 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               title: Text(
-                'Delete Attendance',
+                'Back Conformation',
                 style: TextStyle(
                     fontWeight: FontWeight.bold, color: colorScheme.primary),
               ),
@@ -115,11 +114,10 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: colorScheme.inversePrimary,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           title: Text(
             '${widget.batchs} | P: ${presentList.length} | A: ${absentList.length} | T: ${presentList.length + absentList.length}',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold, fontSize: 20),
           ),
         ),
         body: Column(
@@ -127,14 +125,14 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
             searchWidget(colorScheme),
             Expanded(
               child: ListView.builder(
-                itemCount: tempAbsentList.length + tempPresentList.length,
+                itemCount: widget.rollNumbers.length,
                 itemBuilder: (context, index) {
                   Student student;
 
-                  if (index < tempAbsentList.length) {
-                    student = tempAbsentList[index];
+                  if (index < absentList.length) {
+                    student = absentList[index];
                   } else {
-                    student = tempPresentList[index - tempAbsentList.length];
+                    student = presentList[index - absentList.length];
                   }
 
                   return Card(
@@ -192,7 +190,7 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
         bottomNavigationBar: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           height: 40,
-          color: colorScheme.primaryContainer,
+          color: colorScheme.secondary,
           child: InkWell(
             onTap: () {
               Navigator.of(context).pop(Attendance(
@@ -203,9 +201,9 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
             },
             child: Center(
               child: Text(
-                "${widget.presentList == null ? "Save" : "Edit"}",
+                widget.presentList == null ? "Save" : "Edit",
                 style: TextStyle(
-                  color: colorScheme.onPrimaryContainer,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
@@ -244,14 +242,12 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
     // Remove the student from present list
     if (presentList.contains(student)) {
       presentList.remove(student);
-      tempPresentList.remove(student);
     }
 
     // Ensure student is not added to absent list twice
     if (!absentList.contains(student)) {
       student.gread = null; // Remove grade
       absentList.add(student);
-      tempAbsentList.add(student);
     }
 
     sortStudent();
@@ -260,9 +256,7 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
 
   void sortStudent() {
     presentList.sort((a, b) => a.rollNumber.compareTo(b.rollNumber));
-    tempPresentList.sort((a, b) => a.rollNumber.compareTo(b.rollNumber));
     absentList.sort((a, b) => a.rollNumber.compareTo(b.rollNumber));
-    tempAbsentList.sort((a, b) => a.rollNumber.compareTo(b.rollNumber));
   }
 
   Widget greadsWidget(
@@ -283,13 +277,11 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
         if (isPresentOperation) {
           // If it's not already in the present list, add it
           if (!presentList.contains(student)) {
-            // presentList.add(student);
-            tempPresentList.add(student);
+            presentList.add(student);
           }
           // Remove the student from absent list if they're already there
           if (absentList.contains(student)) {
-            // absentList.remove(student);
-            tempAbsentList.remove(student);
+            absentList.remove(student);
           }
         }
 
@@ -346,23 +338,23 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
               const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         ),
         onChanged: (value) {
-          tempPresentList = presentList
-              .where(
-                (stu) => stu.rollNumber
-                    .toString()
-                    .toLowerCase()
-                    .contains(value.toLowerCase()),
-              )
-              .toList();
+          // tempPresentList = presentList
+          //     .where(
+          //       (stu) => stu.rollNumber
+          //           .toString()
+          //           .toLowerCase()
+          //           .contains(value.toLowerCase()),
+          //     )
+          //     .toList();
 
-          tempAbsentList = absentList
-              .where(
-                (stu) => stu.rollNumber
-                    .toString()
-                    .toLowerCase()
-                    .contains(value.toLowerCase()),
-              )
-              .toList();
+          // tempAbsentList = absentList
+          //     .where(
+          //       (stu) => stu.rollNumber
+          //           .toString()
+          //           .toLowerCase()
+          //           .contains(value.toLowerCase()),
+          //     )
+          //     .toList();
 
           setState(() {});
         },

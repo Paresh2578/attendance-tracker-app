@@ -1,6 +1,9 @@
+import 'dart:ffi';
+
 import 'package:attends_trecker/Models/AttendsModel.dart';
 import 'package:attends_trecker/Service/AttendanceService.dart';
 import 'package:attends_trecker/screens/TakeAttendanceScreen.dart';
+import 'package:attends_trecker/screens/TopStudentScreen.dart';
 import 'package:attends_trecker/utils/Rollnumbers.dart';
 import 'package:chips_choice/chips_choice.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +43,22 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Attendance Tracker'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
+        actions: [
+          IconButton(
+            onPressed: () {
+              _deleteAttendance(isDeleteAll: true, colorScheme);
+            },
+            icon: const Icon(Icons.delete),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => TopStudentScreen(),
+              ));
+            },
+            icon: const Icon(Icons.star),
+          ),
+        ],
       ),
       body: FutureBuilder<List<Attendance>>(
         future:
@@ -102,7 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           onLongPress: () {
-                            _deleteAttendance(attendance, colorScheme);
+                            _deleteAttendance(colorScheme,
+                                attendance: attendance);
                           },
                           onTap: () {
                             _editAttendance(attendance, colorScheme);
@@ -276,7 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Delete the selected attendance
-  void _deleteAttendance(Attendance attendance, ColorScheme colorScheme) {
+  void _deleteAttendance(ColorScheme colorScheme,
+      {Attendance? attendance, bool isDeleteAll = false}) {
     showDialog(
       context: context,
       builder: (context) {
@@ -292,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           content: Text(
-            'Are you sure you want to delete this attendance record?',
+            'Are you sure you want to delete ${isDeleteAll ? "all" : "this"} attendance record?',
             style: TextStyle(
               color: colorScheme.onBackground,
             ),
@@ -306,8 +327,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                await attendanceService
-                    .deleteAttendance(attendance); // Delete attendance
+                if (isDeleteAll) {
+                  await attendanceService.deleteAll(); // Delete attendance
+                } else {
+                  await attendanceService
+                      .deleteAttendance(attendance!); // Delete attendance
+                }
+
                 setState(() {
                   attendanceList.remove(attendance); // Remove it from the UI
                 });
