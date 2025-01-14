@@ -358,6 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context)
         .push(MaterialPageRoute(
       builder: (context) => TakeAttendanceScreen(
+        id: attendance.id,
         rollNumbers: [],
         batchs: attendance.batchs.join(","),
         date: attendance.date,
@@ -367,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ))
         .then((value) {
       if (value != null) {
-        attendanceService.updateAttendance(attendance); // Update the attendance
+        attendanceService.updateAttendance(value); // Update the attendance
         setState(() {}); // Refresh the UI
       }
     });

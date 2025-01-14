@@ -5,7 +5,7 @@ class AttendanceService {
   var _box = Hive.box("attendance");
 
   Future<void> fillAttendance(Attendance attendance) async {
-    await _box.put(attendance.date.toString(), attendance.toMap());
+    await _box.put(attendance.id.toString(), attendance.toMap());
 
     // _box.clear();
   }
@@ -23,14 +23,14 @@ class AttendanceService {
   }
 
   Future<void> deleteAttendance(Attendance attendance) async {
-    await _box.delete(attendance.date.toString());
-    print("deleted");
+    await _box.delete(attendance.id.toString());
     // await _box.clear();
   }
 
   Future<void> updateAttendance(Attendance attendance) async {
+    print("date is *************** ${attendance.date}");
     // Format the date to ignore time (only the date part)
-    await _box.put(attendance.date.toString(), attendance.toMap());
+    await _box.put(attendance.id.toString(), attendance.toMap());
   }
 
   Future<void> deleteAll() async {

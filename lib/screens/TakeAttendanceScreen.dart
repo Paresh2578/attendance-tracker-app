@@ -3,25 +3,29 @@ import 'package:attends_trecker/Models/StudentModel.dart';
 import 'package:flutter/material.dart';
 
 class TakeAttendanceScreen extends StatefulWidget {
-  List<int> rollNumbers;
+  final String? id;
+  final List<int> rollNumbers;
   final String batchs;
   final DateTime date;
-  List<Student>? absentList;
-  List<Student>? presentList;
+  final List<Student>? absentList;
+  final List<Student>? presentList;
 
-  TakeAttendanceScreen(
-      {super.key,
-      required this.rollNumbers,
-      required this.batchs,
-      required this.date,
-      this.absentList,
-      this.presentList});
+  const TakeAttendanceScreen({
+    Key? key,
+    this.id,
+    required this.rollNumbers,
+    required this.batchs,
+    required this.date,
+    this.absentList,
+    this.presentList,
+  }) : super(key: key);
 
   @override
   State<TakeAttendanceScreen> createState() => _TakeAttendanceScreenState();
 }
 
 class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
+  late DateTime selectedDate;
   List<Student> presentList = [];
   List<Student> absentList = [];
   TextEditingController searchController = TextEditingController();
@@ -29,33 +33,21 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    selectedDate = widget.date;
 
     if (widget.presentList != null && widget.absentList != null) {
       presentList = widget.presentList!;
       absentList = widget.absentList!;
-
-      // add the roll numbers List
-      widget.rollNumbers = absentList.map((e) => e.rollNumber).toList();
-      widget.rollNumbers.addAll(presentList.map((e) => e.rollNumber).toList());
     } else {
       absentList =
           widget.rollNumbers.map((roll) => Student(rollNumber: roll)).toList();
     }
-
-    // sort
     sortStudent();
-//
-    setState(() {});
   }
 
   @override
   void dispose() {
     searchController.dispose();
-
-    // clear all data
-    // presentList.clear();
-    // absentList.clear();
-
     super.dispose();
   }
 
@@ -63,72 +55,32 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final size = MediaQuery.of(context).size;
 
     return WillPopScope(
-      onWillPop: () async {
-        // Show the dialog when the user tries to pop the screen (back)
-        bool shouldDelete = await showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                'Back Conformation',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: colorScheme.primary),
-              ),
-              content: Text(
-                'Are you sure you want to Back Without Save?',
-                style: TextStyle(
-                  color: colorScheme.onBackground,
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(false); // No delete, just cancel
-                  },
-                  child: const Text('No'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(true); // Confirm delete
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                  ),
-                  child: const Text(
-                    'Yes',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-
-        return shouldDelete; // Proceed with popping the screen
-      },
+      onWillPop: () => _showBackConfirmationDialog(colorScheme),
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           title: Text(
             '${widget.batchs} | P: ${presentList.length} | A: ${absentList.length} | T: ${presentList.length + absentList.length}',
+            style: const TextStyle(fontSize: 20),
           ),
+          actions: [
+            IconButton(
+              onPressed: _updateDate,
+              icon: const Icon(Icons.date_range_outlined),
+            ),
+          ],
         ),
         body: Column(
           children: [
             searchWidget(colorScheme),
             Expanded(
               child: ListView.builder(
-                itemCount: widget.rollNumbers.length,
+                itemCount: absentList.length + presentList.length,
                 itemBuilder: (context, index) {
                   Student student;
-
                   if (index < absentList.length) {
                     student = absentList[index];
                   } else {
@@ -150,12 +102,6 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
                           style: TextStyle(color: colorScheme.onSecondary),
                         ),
                       ),
-                      // title: Text(
-                      //   'Roll Number: ${student.rollNumber}',
-                      //   style: TextStyle(
-                      //       fontWeight: FontWeight.bold,
-                      //       color: colorScheme.onBackground),
-                      // ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -188,68 +134,98 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
           ],
         ),
         bottomNavigationBar: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          height: 40,
+          height: 50,
           color: colorScheme.secondary,
           child: InkWell(
-            onTap: () {
-              Navigator.of(context).pop(Attendance(
-                  date: widget.date,
-                  batchs: widget.batchs.split(","),
-                  presentList: presentList,
-                  absentList: absentList));
-            },
+            onTap: _saveAttendance,
             child: Center(
               child: Text(
                 widget.presentList == null ? "Save" : "Edit",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
               ),
             ),
           ),
-
-          //   child: Row(
-          //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //     children: [
-          //       ElevatedButton.icon(
-          //         onPressed: () {
-          // Navigator.of(context).pop(Attendance(
-          //   date: widget.date,
-          //   batchs: widget.batchs.split(","),
-          //   presentList: presentList,
-          //   absentList: absentList,
-          // ));
-          //         },
-          //         icon: const Icon(Icons.save),
-          //         label: const Text("Save"),
-          //         style: ElevatedButton.styleFrom(
-          //           backgroundColor: colorScheme.primary,
-          //           foregroundColor: colorScheme.onPrimary,
-          //           textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          //         ),
-          //       ),
-          //     ],
-          //   ),
         ),
       ),
     );
   }
 
+  Future<void> _updateDate() async {
+    DateTime? newDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2023),
+      lastDate: DateTime(2026),
+    );
+
+    if (newDate != null && newDate != selectedDate) {
+      setState(() {
+        selectedDate = newDate;
+      });
+    }
+  }
+
+  Future<bool> _showBackConfirmationDialog(ColorScheme colorScheme) async {
+    return await showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(
+                'Back Conformation',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: colorScheme.primary),
+              ),
+              content: Text(
+                'Are you sure you want to Back Without Save?',
+                style: TextStyle(
+                  color: colorScheme.onBackground,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('No'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                  ),
+                  child: const Text(
+                    'Yes',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  void _saveAttendance() {
+    Navigator.of(context).pop(
+      Attendance(
+        id: widget.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        date: selectedDate,
+        batchs: widget.batchs.split(","),
+        presentList: presentList,
+        absentList: absentList,
+      ),
+    );
+  }
+
   void presentToAbsent({required Student student}) {
-    // Remove the student from present list
     if (presentList.contains(student)) {
       presentList.remove(student);
     }
-
-    // Ensure student is not added to absent list twice
     if (!absentList.contains(student)) {
-      student.gread = null; // Remove grade
+      student.gread = null;
       absentList.add(student);
     }
-
     sortStudent();
     setState(() {});
   }
@@ -259,40 +235,28 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
     absentList.sort((a, b) => a.rollNumber.compareTo(b.rollNumber));
   }
 
-  Widget greadsWidget(
-      {required String gread,
-      required Student student,
-      required ColorScheme colorScheme}) {
-    bool isPresentOperation =
-        student.gread != null ? student.gread!.isEmpty : true;
-
+  Widget greadsWidget({
+    required String gread,
+    required Student student,
+    required ColorScheme colorScheme,
+  }) {
+    bool isSelected = student.gread == gread;
     return InkWell(
       onTap: () {
-        // If the grade is already set to this one, don't do anything
-        // if (student.gread == gread.trim()) return;
-
-        student.gread = gread;
-
-        // Ensure we only add the student if they are not already in the lists
-        if (isPresentOperation) {
-          // If it's not already in the present list, add it
+        if (student.gread != gread) {
+          student.gread = gread;
           if (!presentList.contains(student)) {
             presentList.add(student);
           }
-          // Remove the student from absent list if they're already there
-          if (absentList.contains(student)) {
-            absentList.remove(student);
-          }
+          absentList.remove(student);
+          sortStudent();
+          setState(() {});
         }
-
-        sortStudent();
-        setState(() {});
       },
       child: Container(
         decoration: BoxDecoration(
-          color: (student.gread ?? "") == gread.trim()
-              ? colorScheme.tertiaryContainer
-              : Colors.transparent,
+          color:
+              isSelected ? colorScheme.tertiaryContainer : Colors.transparent,
           border: Border.all(color: colorScheme.outline),
           borderRadius: BorderRadius.circular(16),
         ),
@@ -303,7 +267,7 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: (student.gread ?? "") == gread.trim()
+            color: isSelected
                 ? colorScheme.onTertiaryContainer
                 : colorScheme.onBackground,
           ),
@@ -318,13 +282,6 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          const BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          )
-        ],
       ),
       child: TextField(
         controller: searchController,
@@ -337,27 +294,6 @@ class _TakeAttendanceScreenState extends State<TakeAttendanceScreen> {
           contentPadding:
               const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         ),
-        onChanged: (value) {
-          // tempPresentList = presentList
-          //     .where(
-          //       (stu) => stu.rollNumber
-          //           .toString()
-          //           .toLowerCase()
-          //           .contains(value.toLowerCase()),
-          //     )
-          //     .toList();
-
-          // tempAbsentList = absentList
-          //     .where(
-          //       (stu) => stu.rollNumber
-          //           .toString()
-          //           .toLowerCase()
-          //           .contains(value.toLowerCase()),
-          //     )
-          //     .toList();
-
-          setState(() {});
-        },
       ),
     );
   }
