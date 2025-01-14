@@ -28,7 +28,6 @@ class AttendanceService {
   }
 
   Future<void> updateAttendance(Attendance attendance) async {
-    print("date is *************** ${attendance.date}");
     // Format the date to ignore time (only the date part)
     await _box.put(attendance.id.toString(), attendance.toMap());
   }
